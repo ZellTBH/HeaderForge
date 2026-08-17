@@ -1,6 +1,6 @@
 {
   "name": "com.breakingframe.headerforge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "Header Forge",
   "description": "Category banners in the component stack and gradient separator bars in the Hierarchy, so a crowded GameObject and a crowded scene both stay readable.",
   "unity": "6000.0",

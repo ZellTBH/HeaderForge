@@ -2,6 +2,20 @@
 
 All notable changes to Header Forge are documented here.
 
+## [0.1.1]
+
+### Fixed
+
+- **Moving a header no longer hides a neighbouring component.** The default
+  header a separator hides is now released when its editor is disabled. The
+  Inspector recycles its EditorElement across rebuilds, so a slot left hidden
+  came back assigned to another component, which then disappeared from the
+  stack until the selection changed.
+
+- **The ancestor climb stays inside the EditorElement.** One level too far and
+  the backwards search lands on a foreign IMGUIContainer in the list of editors,
+  hiding another component instead of the default header.
+
 ## [0.1.0]
 
 First release. The two header features are extracted from Sanguinis into a
@@ -38,6 +52,7 @@ package, with no behaviour change.
 
 - The banner hides the default grey component header by walking one level up the
   visual tree, which is internal Unity structure and free to change in any future
-  version. Every step of that search is guarded and a failure does nothing at all,
-  so the worst case is the default header showing above the banner rather than an
-  exception on every repaint.
+  version. Every step of that search is guarded, so a miss never throws on repaint.
+  The worst case is not the default header showing above the banner: a search that
+  lands on the wrong container takes another component off the stack until the
+  selection changes. Fixed in 0.1.1.
