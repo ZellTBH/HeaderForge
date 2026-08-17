@@ -22,6 +22,9 @@ namespace BreakingFrame.HeaderForge.Editor
     /// The alternative was drawing the banner inside OnInspectorGUI and leaving the header
     /// alone, which costs two lines per separator and makes the stack noisier than it was
     /// without the tool.
+    /// Hiding is symmetric: the container is kept and released in OnDisable. The Inspector
+    /// recycles its EditorElement across rebuilds, so a slot left hidden comes back assigned
+    /// to another component, which then disappears from the stack until the selection changes.
     /// Gradient textures are shared by color key across every separator and destroyed before
     /// an assembly reload. Alpha is forced to one before the key and before the interpolation:
     /// a banner is a background, and it also makes the RGB key exact by construction.
@@ -45,6 +48,22 @@ namespace BreakingFrame.HeaderForge.Editor
             Debug.Assert(_labelProperty != null, "[ComponentSeparatorEditor] The label property was not found.", target);
             Debug.Assert(_leftColorProperty != null && _rightColorProperty != null,
                 "[ComponentSeparatorEditor] A color property was not found.", target);
+        }
+
+        /// <summary>
+        /// Gives the hidden header back to the USS instead of forcing a value on it: the
+        /// EditorElement owns that container, and a StyleKeyword.Null lets whatever rule was
+        /// driving it apply again once the slot is reused by another component.
+        /// The null guard is not defensive noise: the element belongs to a tree the Inspector
+        /// is free to tear down before this editor is disabled.
+        /// </summary>
+        private void OnDisable()
+        {
+            if (_hiddenHeader == null)
+                return;
+
+            _hiddenHeader.style.display = StyleKeyword.Null;
+            _hiddenHeader = null;
         }
 
         public override VisualElement CreateInspectorGUI()
@@ -131,14 +150,17 @@ namespace BreakingFrame.HeaderForge.Editor
         /// Inspector wraps it in an InspectorElement first, so the header is a sibling of
         /// that wrapper, never of the root. Searching one level finds the root at index zero
         /// and gives up without ever examining a single container.
-        /// The climb stops after MAX_ANCESTOR_CLIMB levels. Further up sits the GameObject
-        /// header, the one carrying the name, the tag and the layer, and hiding that would be
-        /// far worse than the two lines this fixes.
+        /// The climb stops after MAX_ANCESTOR_CLIMB levels, which is exactly what it takes to
+        /// reach the EditorElement through the InspectorElement wrapper. A third level would
+        /// step out of the EditorElement and search the list of editors instead, where the
+        /// closest IMGUIContainer backwards belongs to another component entirely.
+        /// The container is stored so OnDisable can hand it back: hiding a slot the Inspector
+        /// recycles is only safe as long as the hiding is undone.
         /// Silent on every miss: a null parent, a node sitting first among its siblings, or a
         /// tree shaped differently by a future Unity all leave the header visible and nothing
         /// else. Never log here, this runs on layout.
         /// </summary>
-        private static void HideDefaultHeader(VisualElement root)
+        private void HideDefaultHeader(VisualElement root)
         {
             VisualElement current = root;
 
@@ -154,6 +176,7 @@ namespace BreakingFrame.HeaderForge.Editor
                     if (parent[i] is IMGUIContainer header)
                     {
                         header.style.display = DisplayStyle.None;
+                        _hiddenHeader = header;
                         return;
                     }
                 }
@@ -211,8 +234,16 @@ namespace BreakingFrame.HeaderForge.Editor
         /// <summary>
         /// Without this the component list keeps drawing in its previous order, or keeps a
         /// destroyed separator on screen, until the selection changes.
+        /// Deferred to delayCall because the caller is a ContextualMenuManipulator action:
+        /// rebuilding straight away tears down the visual tree that is still dispatching the
+        /// event, banner and menu included. The repaint is explicit because a rebuild alone
+        /// does not mark the other open windows dirty.
         /// </summary>
-        private static void RebuildInspector() => ActiveEditorTracker.sharedTracker.ForceRebuild();
+        private static void RebuildInspector() => EditorApplication.delayCall += () =>
+        {
+            ActiveEditorTracker.sharedTracker.ForceRebuild();
+            InternalEditorUtility.RepaintAllViews();
+        };
 
         private void RefreshLabel()
         {
@@ -325,10 +356,11 @@ namespace BreakingFrame.HeaderForge.Editor
         private const string MOVE_DOWN_ITEM = "Move Down";
         private const string REMOVE_ITEM = "Remove Header";
 
-        // Three levels reach the EditorElement through the InspectorElement wrapper and stop
-        // short of the GameObject header, which carries the name, the tag and the layer and
-        // must never be hidden.
-        private const int MAX_ANCESTOR_CLIMB = 3;
+        // Two levels reach the EditorElement through the InspectorElement wrapper, which is
+        // where the default header sits. A third would leave the EditorElement and let the
+        // backwards search land on a foreign IMGUIContainer in the list of editors, hiding
+        // another component instead of this header.
+        private const int MAX_ANCESTOR_CLIMB = 2;
 
         private const int GRADIENT_WIDTH = 64;
         private const int INITIAL_BACKGROUND_CAPACITY = 8;
@@ -347,6 +379,7 @@ namespace BreakingFrame.HeaderForge.Editor
         private VisualElement _banner;
         private VisualElement _editingFields;
         private Label _bannerLabel;
+        private IMGUIContainer _hiddenHeader;
         private Texture2D _background;
         private Color _cachedLeftColor;
         private Color _cachedRightColor;
