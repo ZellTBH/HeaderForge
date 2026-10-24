@@ -2,6 +2,14 @@
 
 All notable changes to Header Forge are documented here.
 
+## [0.1.2]
+
+### Added
+
+- **MIT license.** The package is now distributed under the MIT license,
+  which makes it free to use, modify and ship in commercial projects as
+  long as the copyright notice travels with it.
+
 ## [0.1.1]
 
 ### Fixed
