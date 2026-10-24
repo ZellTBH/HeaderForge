@@ -67,3 +67,7 @@ dependency through your local git, which has to be installed and on the PATH.
 `ComponentSeparator` ships in builds. It is empty and costs nothing at runtime,
 while stripping it conditionally would break the reference and show a missing
 script on the prefab.
+
+## License
+
+MIT, see the [LICENSE](LICENSE) file.
