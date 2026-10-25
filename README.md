@@ -1,3 +1,5 @@
+![Header Forge](Documentation~/banner.png)
+
 # Header Forge
 
 Two ways to cut visual noise in the Unity editor, for Breaking Frame productions.
